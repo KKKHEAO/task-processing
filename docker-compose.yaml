@@ -48,6 +48,26 @@ services:
     depends_on:
       - kafka
 
+  api:
+    build:
+      context: .
+      dockerfile: ./deployments/api.Dockerfile
+    container_name: api_task
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: task_db
+      KAFKA_BROKERS: kafka:9092
+    ports:
+      - "50051:50051"
+
 volumes:
   postgres_data:
   kafka_data:
