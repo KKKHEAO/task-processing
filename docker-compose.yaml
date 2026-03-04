@@ -20,6 +20,16 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  migrate:
+    image: migrate/migrate
+    container_name: migrate
+    volumes:
+      - ./migrations:/migrations
+    command: [ "-path=/migrations", "-database=postgres://postgres:postgres@postgres:5432/task_db?sslmode=disable", "up"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   kafka:
     image: bitnamilegacy/kafka:4.0.0-debian-12-r10
     container_name: kafka_task
