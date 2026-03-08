@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"task-processing/internal/api/repository"
 	"task-processing/internal/domain"
-	"task-processing/internal/repository"
 	"time"
 
 	"github.com/google/uuid"

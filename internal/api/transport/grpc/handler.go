@@ -2,7 +2,7 @@ package grpc
 
 import (
 	"context"
-	"task-processing/internal/service"
+	"task-processing/internal/api/service"
 	taskpb "task-processing/proto"
 
 	"github.com/google/uuid"

@@ -17,7 +17,10 @@ func main() {
 		"task-workers",
 	)
 
-	pool := worker.NewPool(100)
+	retryProducer := kafka.NewProducer("kafka:9092", "tasks.retry")
+	dlqProducer := kafka.NewProducer("kafka:9092", "tasks.dlq")
+
+	pool := worker.NewPool(5, retryProducer, dlqProducer)
 
 	for {
 

@@ -3,7 +3,7 @@ package outbox
 import (
 	"context"
 	"log"
-	"task-processing/internal/repository"
+	"task-processing/internal/api/repository"
 	"time"
 )
 

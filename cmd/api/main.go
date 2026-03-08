@@ -7,10 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 	"task-processing/config"
-	"task-processing/internal/outbox"
-	"task-processing/internal/repository"
-	"task-processing/internal/service"
-	"task-processing/internal/transport/grpc"
+	"task-processing/internal/api/outbox"
+	"task-processing/internal/api/repository"
+	"task-processing/internal/api/service"
+	"task-processing/internal/api/transport/grpc"
 	"task-processing/pkg/postgres"
 )
 
