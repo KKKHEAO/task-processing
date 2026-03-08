@@ -16,6 +16,5 @@ func RunServer(handler *TaskHandler, port string) error {
 
 	server := grpc.NewServer()
 	taskpb.RegisterTaskServiceServer(server, handler)
-
 	return server.Serve(lis)
 }

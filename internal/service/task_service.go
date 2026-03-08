@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"task-processing/internal/domain"
 	"task-processing/internal/repository"
 	"time"
@@ -30,7 +31,20 @@ func (s *TaskService) CreateTask(ctx context.Context, taskType string, payload [
 		UpdatedAt: time.Now(),
 	}
 
-	if err := s.repository.Create(ctx, task); err != nil {
+	eventPayload, err := json.Marshal(task)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	event := &domain.OutboxEvent{
+		Id:        uuid.New(),
+		Topic:     "tasks.created",
+		Key:       task.Id.String(),
+		Payload:   eventPayload,
+		CreatedAt: time.Now(),
+	}
+
+	if err := s.repository.Create(ctx, task, event); err != nil {
 		return uuid.Nil, err
 	}
 
