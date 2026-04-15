@@ -15,7 +15,7 @@ type PostgresConfig struct {
 	PostgresqlUser     string
 	PostgresqlPassword string
 	PostgresqlDbname   string
-	PostgresqlSSLMode  bool
+	PostgresqlSSLMode  string
 	PgDriver           string
 }
 
@@ -27,7 +27,7 @@ func NewConfig() *Config {
 			PostgresqlUser:     os.Getenv("DB_USER"),
 			PostgresqlPassword: os.Getenv("DB_PASSWORD"),
 			PostgresqlDbname:   os.Getenv("DB_NAME"),
-			PostgresqlSSLMode:  os.Getenv("DB_SSL_MODE") == "true",
+			PostgresqlSSLMode:  os.Getenv("DB_SSL_MODE"),
 			PgDriver:           os.Getenv("DB_DRIVER"),
 		},
 	}

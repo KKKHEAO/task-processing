@@ -74,7 +74,7 @@ services:
       DB_USER: postgres
       DB_PASSWORD: postgres
       DB_NAME: task_db
-      DB_SSL_MODE: false
+      DB_SSL_MODE: disable
       DB_DRIVER: pgx
       KAFKA_BROKERS: kafka:9092
     ports:
