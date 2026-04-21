@@ -76,9 +76,28 @@ services:
       DB_NAME: task_db
       DB_SSL_MODE: disable
       DB_DRIVER: pgx
-      KAFKA_BROKERS: kafka:9092
     ports:
       - "50051:50051"
+
+  outboxer:
+    build:
+      context: .
+      dockerfile: ./deployments/outboxer.Dockerfile
+    container_name: outboxer_task
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: task_db
+      DB_SSL_MODE: disable
+      DB_DRIVER: pgx
+      KAFKA_BROKERS: kafka:9092
 
   worker:
     build:
@@ -90,17 +109,6 @@ services:
         condition: service_healthy
       kafka:
         condition: service_started
-#    environment:
-#      DB_HOST: postgres
-#      DB_PORT: 5432
-#      DB_USER: postgres
-#      DB_PASSWORD: postgres
-#      DB_NAME: task_db
-#      DB_SSL_MODE: false
-#      DB_DRIVER: pgx
-#      KAFKA_BROKERS: kafka:9092
-#    ports:
-#      - "50051:50051"
 
 volumes:
   postgres_data:

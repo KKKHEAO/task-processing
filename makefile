@@ -1,7 +1,7 @@
 .PHONY: up down logs clean migrate kafka-create-topics infra-up infra-down infra-logs
 
 up:
-	docker-compose up -d
+	docker-compose up -d --build
 
 down:
 	docker-compose down
@@ -26,3 +26,6 @@ infra-up:
 
 infra-down:
 	docker-compose down postgres migrate kafka kafka-ui -v
+
+infra-logs:
+	docker-compose logs -f postgres kafka kafka-ui

@@ -20,7 +20,6 @@ func NewWorker(repo repository.TaskRepository, pub *Publisher) *Worker {
 }
 
 func (w *Worker) Start(ctx context.Context) {
-	log.Println("Starting worker")
 	ticker := time.NewTicker(2 * time.Second)
 
 	for {
@@ -44,7 +43,6 @@ func (w *Worker) processBatch(ctx context.Context) {
 	}
 	log.Println("Fetched outbox batch:", len(events))
 	for _, e := range events {
-
 		err := w.publisher.Publish(
 			ctx,
 			e.Topic,

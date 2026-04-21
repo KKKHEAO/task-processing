@@ -31,3 +31,7 @@ func (p *Publisher) Publish(ctx context.Context, topic string, key string, paylo
 
 	return p.writer.WriteMessages(ctx, msg)
 }
+
+func (p *Publisher) Close() error {
+	return p.writer.Close()
+}

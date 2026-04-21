@@ -1,6 +1,7 @@
 package grpc
 
 import (
+	"context"
 	"net"
 
 	taskpb "task-processing/proto"
@@ -8,7 +9,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func RunServer(handler *TaskHandler, port string) error {
+func RunServer(ctx context.Context, handler *TaskHandler, port string) error {
 	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		return err
@@ -16,5 +17,17 @@ func RunServer(handler *TaskHandler, port string) error {
 
 	server := grpc.NewServer()
 	taskpb.RegisterTaskServiceServer(server, handler)
-	return server.Serve(lis)
+
+	serveErr := make(chan error, 1)
+	go func() {
+		serveErr <- server.Serve(lis)
+	}()
+
+	select {
+	case err := <-serveErr:
+		return err
+	case <-ctx.Done():
+		server.GracefulStop()
+		return nil
+	}
 }
