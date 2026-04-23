@@ -1,0 +1,1 @@
+ALTER TABLE sh_task.tasks DROP COLUMN IF EXISTS retries;

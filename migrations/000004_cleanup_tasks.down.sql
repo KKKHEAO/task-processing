@@ -1,0 +1,1 @@
+ALTER TABLE sh_task.tasks ADD COLUMN retries INT NOT NULL DEFAULT 0;
