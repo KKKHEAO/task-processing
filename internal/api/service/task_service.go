@@ -26,7 +26,6 @@ func (s *TaskService) CreateTask(ctx context.Context, taskType string, payload [
 		Type:      taskType,
 		Payload:   payload,
 		Status:    domain.StatusPending,
-		Retries:   0,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}

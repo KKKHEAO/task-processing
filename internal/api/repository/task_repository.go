@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"task-processing/internal/domain"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -12,4 +13,5 @@ type TaskRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*domain.Task, error)
 	FetchOutboxBatch(ctx context.Context, limit int) ([]*domain.OutboxEvent, error)
 	MarkOutboxProcessed(ctx context.Context, id uuid.UUID) error
+	UpdateOutboxRetry(ctx context.Context, id uuid.UUID, retryCount int, lastRetryAt *time.Time, nextRetryAt *time.Time, errorMessage *string) error
 }

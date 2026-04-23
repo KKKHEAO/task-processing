@@ -20,7 +20,6 @@ type Task struct {
 	Type      string
 	Payload   []byte
 	Status    Status
-	Retries   int
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }

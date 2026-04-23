@@ -10,7 +10,7 @@ import (
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
+	
 	consumer := kafka.NewConsumer(
 		"kafka:9092",
 		"tasks.created",

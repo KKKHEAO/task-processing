@@ -31,7 +31,6 @@ func (r *postgresRepository) Create(ctx context.Context, task *domain.Task, even
 		task.Type,
 		task.Payload,
 		task.Status,
-		task.Retries,
 		task.CreatedAt,
 		task.UpdatedAt,
 	)
@@ -63,7 +62,6 @@ func (r *postgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain
 		&t.Type,
 		&t.Payload,
 		&t.Status,
-		&t.Retries,
 		&t.CreatedAt,
 		&t.UpdatedAt,
 	); err != nil {
