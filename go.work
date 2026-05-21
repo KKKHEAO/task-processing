@@ -1,0 +1,13 @@
+go 1.25.0
+
+use (
+	./apps/api
+	./apps/outboxer
+	./apps/worker
+	./packages/config
+	./packages/domain
+	./packages/kafka
+	./packages/postgres
+	./packages/repository
+	./proto
+)
