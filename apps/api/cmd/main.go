@@ -2,24 +2,25 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/KKKHEAO/task-processing/packages/repository"
 	"github.com/KKKHEAO/task-processing/apps/api/internal/service"
 	"github.com/KKKHEAO/task-processing/apps/api/internal/transport/grpc"
 	"github.com/KKKHEAO/task-processing/packages/config"
+	"github.com/KKKHEAO/task-processing/packages/logger"
 	"github.com/KKKHEAO/task-processing/packages/postgres"
+	"github.com/KKKHEAO/task-processing/packages/repository"
+	"go.uber.org/zap"
 )
 
 func main() {
-	log.Println("Starting gRPC api server...")
 	cfg := config.NewConfig()
+	log, _ := logger.NewLogger(cfg)
 	psqlDB, err := postgres.NewSqlDB(cfg)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Ошибка при инициализации postgres", zap.Error(err))
 	}
 	defer psqlDB.Close()
 
@@ -40,17 +41,17 @@ func main() {
 
 	select {
 	case <-quit:
-		log.Println("Shutting down server gracefully...")
+		log.Info("Shutting down server gracefully...")
 		cancel()
 		err := <-errChan
 		if err != nil && err != context.Canceled {
-			log.Fatalf("Server error during shutdown: %v", err)
+			log.Fatal("Server error during shutdown: ", zap.Error(err))
 		}
-		log.Println("Server stopped")
+		log.Info("Server stopped")
 	case err := <-errChan:
 		if err != nil {
-			log.Fatalf("Server error: %v", err)
+			log.Fatal("Server error: ", zap.Error(err))
 		}
-		log.Println("Server stopped")
+		log.Info("Server stopped")
 	}
 }

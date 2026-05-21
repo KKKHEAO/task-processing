@@ -9,6 +9,7 @@ import (
 )
 
 type Config struct {
+	AppEnv   string
 	Postgres PostgresConfig
 	Kafka    KafkaConfig
 }
@@ -44,6 +45,7 @@ type RetryTopicConfig struct {
 
 func NewConfig() *Config {
 	return &Config{
+		AppEnv: getEnvOrDefault("ENVIRONMENT", "development"),
 		Postgres: PostgresConfig{
 			PostgresqlHost:     getEnvOrDefault("DB_HOST", "localhost"),
 			PostgresqlPort:     getEnvOrDefault("DB_PORT", "5432"),

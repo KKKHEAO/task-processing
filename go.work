@@ -1,4 +1,4 @@
-go 1.25.0
+go 1.26.2
 
 use (
 	./apps/api
@@ -7,6 +7,7 @@ use (
 	./packages/config
 	./packages/domain
 	./packages/kafka
+	./packages/logger
 	./packages/postgres
 	./packages/repository
 	./proto
