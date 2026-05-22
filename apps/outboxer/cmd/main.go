@@ -51,7 +51,7 @@ func NewApp(cfg *config.Config, log *zap.Logger) (*App, error) {
 	}
 
 	taskRepo := repository.NewPostgresRepo(psqlDB)
-	publisher := outbox.NewPublisher(&cfg.Kafka)
+	publisher := outbox.NewPublisher(&cfg.Kafka, log)
 	worker := outbox.NewWorker(taskRepo, publisher, &cfg.Kafka, log)
 
 	return &App{

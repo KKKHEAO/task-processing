@@ -6,6 +6,7 @@ import (
 
 	"github.com/KKKHEAO/task-processing/packages/config"
 	"github.com/KKKHEAO/task-processing/packages/domain"
+	"go.uber.org/zap"
 
 	"github.com/segmentio/kafka-go"
 )
@@ -13,17 +14,22 @@ import (
 type Publisher struct {
 	writer *kafka.Writer
 	config *config.KafkaConfig
+	log    *zap.Logger
 }
 
-func NewPublisher(cfg *config.KafkaConfig) *Publisher {
+func NewPublisher(cfg *config.KafkaConfig, log *zap.Logger) *Publisher {
 	writer := &kafka.Writer{
-		Addr:     kafka.TCP(cfg.Brokers...),
-		Balancer: &kafka.LeastBytes{},
+		Addr:         kafka.TCP(cfg.Brokers...),
+		Balancer:     &kafka.LeastBytes{},
+		BatchTimeout: 10 * time.Millisecond,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
 	}
 
 	return &Publisher{
 		writer: writer,
 		config: cfg,
+		log:    log,
 	}
 }
 
@@ -32,6 +38,12 @@ func NewPublisher(cfg *config.KafkaConfig) *Publisher {
 func (p *Publisher) PublishEvent(ctx context.Context, event *domain.OutboxEvent) (string, error) {
 	// Определяем целевой топик на основе retry count
 	targetTopic := p.selectTargetTopic(event.RetryCount)
+
+	p.log.Info("publishing event",
+		zap.String("topic", targetTopic),
+		zap.String("event_id", event.Id.String()),
+		zap.Int("retry", event.RetryCount),
+	)
 
 	// Создаем сообщение с минимальными заголовками
 	msg := kafka.Message{
@@ -61,7 +73,7 @@ func (p *Publisher) selectTargetTopic(retryCount int) string {
 	}
 
 	// Если превышено максимальное количество попыток, отправляем в DLQ
-	if retryCount >= p.config.MaxRetries {
+	if retryCount >= p.config.MaxRetries-1 {
 		return p.config.DLQTopic
 	}
 
@@ -104,15 +116,4 @@ func (p *Publisher) CalculateNextRetryTime(retryCount int) time.Time {
 
 func (p *Publisher) Close() error {
 	return p.writer.Close()
-}
-
-// Publish - упрощенный метод для обратной совместимости
-func (p *Publisher) Publish(ctx context.Context, topic string, key string, payload []byte) error {
-	msg := kafka.Message{
-		Topic: topic,
-		Key:   []byte(key),
-		Value: payload,
-	}
-
-	return p.writer.WriteMessages(ctx, msg)
 }

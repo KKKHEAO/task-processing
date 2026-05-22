@@ -2,8 +2,10 @@ package repository
 
 import (
 	"context"
-	"github.com/KKKHEAO/task-processing/packages/domain"
+	"fmt"
 	"time"
+
+	"github.com/KKKHEAO/task-processing/packages/domain"
 
 	"github.com/google/uuid"
 )
@@ -13,7 +15,7 @@ import (
 func (r *postgresRepository) FetchOutboxBatch(ctx context.Context, limit int) ([]*domain.OutboxEvent, error) {
 	rows, err := r.db.QueryContext(ctx, fetchOutboxBatch, limit)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query outbox batch: %w", err)
 	}
 
 	defer rows.Close()
@@ -38,7 +40,7 @@ func (r *postgresRepository) FetchOutboxBatch(ctx context.Context, limit int) ([
 		)
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("scan outbox event: %w", err)
 		}
 
 		e.LastRetryAt = lastRetryAt
@@ -46,6 +48,10 @@ func (r *postgresRepository) FetchOutboxBatch(ctx context.Context, limit int) ([
 		e.ErrorMessage = errorMessage
 
 		events = append(events, &e)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate outbox rows: %w", err)
 	}
 
 	return events, nil
