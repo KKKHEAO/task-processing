@@ -12,12 +12,18 @@ func UnaryLogging(log *zap.Logger) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		start := time.Now()
 		resp, err := handler(ctx, req)
-
-		log.Info("gRPC call",
-			zap.String("method", info.FullMethod),
-			zap.Duration("latency", time.Since(start)),
-			zap.Error(err),
-		)
+		if err != nil {
+			log.Error("gRPC call",
+				zap.String("method", info.FullMethod),
+				zap.Duration("latency", time.Since(start)),
+				zap.Error(err),
+			)
+		} else {
+			log.Error("gRPC call",
+				zap.String("method", info.FullMethod),
+				zap.Duration("latency", time.Since(start)),
+			)
+		}
 
 		return resp, err
 	}

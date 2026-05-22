@@ -3,10 +3,11 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/KKKHEAO/task-processing/packages/domain"
+	"github.com/google/uuid"
 )
 
 type TaskService struct {
@@ -43,12 +44,16 @@ func (s *TaskService) CreateTask(ctx context.Context, taskType string, payload [
 	}
 
 	if err := s.repository.Create(ctx, task, event); err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("create task %s: %w", task.Id, err)
 	}
 
 	return task.Id, nil
 }
 
 func (s *TaskService) GetTask(ctx context.Context, id uuid.UUID) (*domain.Task, error) {
-	return s.repository.GetByID(ctx, id)
+	task, err := s.repository.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("get task %s: %w", id, err)
+	}
+	return task, nil
 }

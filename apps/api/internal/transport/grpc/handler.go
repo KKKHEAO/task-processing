@@ -2,6 +2,8 @@ package grpc
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	taskpb "task-processing/proto"
 
@@ -38,7 +40,7 @@ func (h *TaskHandler) CreateTask(ctx context.Context, req *taskpb.CreateTaskRequ
 
 	id, err := h.service.CreateTask(ctx, req.Type, req.Payload)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.Internal, "failed to create task")
 	}
 
 	return &taskpb.CreateTaskResponse{
@@ -53,12 +55,15 @@ func (h *TaskHandler) GetTask(ctx context.Context, req *taskpb.GetTaskRequest) (
 
 	uid, err := uuid.Parse(req.Id)
 	if err != nil {
-		return nil, err
+		return nil, status.Errorf(codes.InvalidArgument, "id %s is invalid", req.Id)
 	}
 
 	task, err := h.service.GetTask(ctx, uid)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, status.Errorf(codes.NotFound, "task %s not found", uid)
+		}
+		return nil, status.Error(codes.Internal, "internal error")
 	}
 
 	return &taskpb.GetTaskResponse{
