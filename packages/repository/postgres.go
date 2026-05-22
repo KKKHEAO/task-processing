@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
+
 	"github.com/KKKHEAO/task-processing/packages/domain"
 
 	"github.com/google/uuid"
@@ -19,10 +21,12 @@ func NewPostgresRepo(db *sql.DB) domain.TaskRepository {
 func (r *postgresRepository) Create(ctx context.Context, task *domain.Task, event *domain.OutboxEvent) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("begin transaction error: %w", err)
 	}
 
-	defer tx.Rollback()
+	defer func() {
+		_ = tx.Rollback()
+	}()
 
 	_, err = tx.ExecContext(
 		ctx,
@@ -35,7 +39,7 @@ func (r *postgresRepository) Create(ctx context.Context, task *domain.Task, even
 		task.UpdatedAt,
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("insert task error: %w", err)
 	}
 
 	_, err = tx.ExecContext(
@@ -49,9 +53,13 @@ func (r *postgresRepository) Create(ctx context.Context, task *domain.Task, even
 	)
 
 	if err != nil {
-		return err
+		return fmt.Errorf("insert outbox event error: %w", err)
 	}
-	return tx.Commit()
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit transaction error: %w", err)
+	}
+	return nil
 }
 
 func (r *postgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.Task, error) {
@@ -65,7 +73,7 @@ func (r *postgresRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain
 		&t.CreatedAt,
 		&t.UpdatedAt,
 	); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get task %s error: %w", id, err)
 	}
 	return &t, nil
 }
