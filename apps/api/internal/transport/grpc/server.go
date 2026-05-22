@@ -6,16 +6,17 @@ import (
 
 	taskpb "task-processing/proto"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
-func RunServer(ctx context.Context, handler *TaskHandler, port string) error {
+func RunServer(ctx context.Context, handler *TaskHandler, port string, log *zap.Logger) error {
 	lis, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		return err
 	}
 
-	server := grpc.NewServer()
+	server := grpc.NewServer(grpc.UnaryInterceptor(UnaryLogging(log)))
 	taskpb.RegisterTaskServiceServer(server, handler)
 
 	serveErr := make(chan error, 1)

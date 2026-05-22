@@ -33,7 +33,7 @@ func main() {
 
 	errChan := make(chan error, 1)
 	go func() {
-		errChan <- grpc.RunServer(ctx, taskHandler, "50051")
+		errChan <- grpc.RunServer(ctx, taskHandler, "50051", log)
 	}()
 
 	quit := make(chan os.Signal, 1)
