@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,6 +19,9 @@ import (
 
 func main() {
 	cfg := config.NewConfig()
+	if err := cfg.Validate(); err != nil {
+		log.Fatal("invalid config", zap.Error(err))
+	}
 	log, _ := logger.NewLogger(cfg)
 	psqlDB, err := postgres.NewSqlDB(cfg)
 	if err != nil {
