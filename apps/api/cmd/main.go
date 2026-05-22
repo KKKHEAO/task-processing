@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/KKKHEAO/task-processing/apps/api/internal/service"
 	"github.com/KKKHEAO/task-processing/apps/api/internal/transport/grpc"
@@ -43,9 +44,14 @@ func main() {
 	case <-quit:
 		log.Info("Shutting down server gracefully...")
 		cancel()
-		err := <-errChan
-		if err != nil && err != context.Canceled {
-			log.Fatal("Server error during shutdown: ", zap.Error(err))
+
+		select {
+		case err := <-errChan:
+			if err != nil && err != context.Canceled {
+				log.Fatal("Server error during shutdown: ", zap.Error(err))
+			}
+		case <-time.After(10 * time.Second):
+			log.Fatal("shutdown timeout")
 		}
 		log.Info("Server stopped")
 	case err := <-errChan:
