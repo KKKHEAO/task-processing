@@ -5,17 +5,18 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
 
-	"github.com/KKKHEAO/task-processing/packages/config"
 	"github.com/KKKHEAO/task-processing/apps/outboxer/internal/outbox"
+	"github.com/KKKHEAO/task-processing/packages/config"
+	"github.com/KKKHEAO/task-processing/packages/logger"
 	"github.com/KKKHEAO/task-processing/packages/postgres"
 	"github.com/KKKHEAO/task-processing/packages/repository"
+	"go.uber.org/zap"
 )
 
 // App представляет основное приложение outbox worker
@@ -26,11 +27,11 @@ type App struct {
 	worker    *outbox.Worker
 	cancel    context.CancelFunc
 	wg        sync.WaitGroup
+	log       *zap.Logger
 }
 
 // NewApp создает новое приложение
-func NewApp() (*App, error) {
-	cfg := config.NewConfig()
+func NewApp(cfg *config.Config, log *zap.Logger) (*App, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("config validation failed: %w", err)
 	}
@@ -51,13 +52,14 @@ func NewApp() (*App, error) {
 
 	taskRepo := repository.NewPostgresRepo(psqlDB)
 	publisher := outbox.NewPublisher(&cfg.Kafka)
-	worker := outbox.NewWorker(taskRepo, publisher, &cfg.Kafka)
+	worker := outbox.NewWorker(taskRepo, publisher, &cfg.Kafka, log)
 
 	return &App{
 		config:    cfg,
 		db:        psqlDB,
 		publisher: publisher,
 		worker:    worker,
+		log:       log,
 	}, nil
 }
 
@@ -71,11 +73,11 @@ func (a *App) Run() error {
 	go func() {
 		defer a.wg.Done()
 		a.worker.Start(ctx)
-		log.Println("Worker stopped")
+		a.log.Info("Worker stopped")
 	}()
 
-	log.Println("Outbox worker started successfully")
-	log.Println("Press Ctrl+C to stop")
+	a.log.Info("Outbox worker started successfully")
+	a.log.Info("Press Ctrl+C to stop")
 
 	// Ожидаем сигналы завершения
 	quit := make(chan os.Signal, 1)
@@ -83,17 +85,17 @@ func (a *App) Run() error {
 
 	select {
 	case sig := <-quit:
-		log.Printf("Received signal: %s", sig)
+		a.log.Info("Received signal", zap.String("signal", sig.String()))
 		return a.Shutdown(10 * time.Second)
 	case <-ctx.Done():
-		log.Println("Context cancelled")
+		a.log.Info("Context cancelled")
 		return nil
 	}
 }
 
 // Shutdown gracefully останавливает приложение
 func (a *App) Shutdown(timeout time.Duration) error {
-	log.Println("Shutting down gracefully...")
+	a.log.Info("Shutting down gracefully...")
 
 	// Отменяем контекст
 	if a.cancel != nil {
@@ -109,9 +111,9 @@ func (a *App) Shutdown(timeout time.Duration) error {
 
 	select {
 	case <-done:
-		log.Println("All workers stopped")
+		a.log.Info("All workers stopped")
 	case <-time.After(timeout):
-		log.Println("Timeout waiting for workers to stop")
+		a.log.Info("Timeout waiting for workers to stop")
 	}
 
 	// Закрываем соединения
@@ -133,14 +135,16 @@ func (a *App) Shutdown(timeout time.Duration) error {
 }
 
 func main() {
-	app, err := NewApp()
+	cfg := config.NewConfig()
+	log, _ := logger.NewLogger(cfg)
+	app, err := NewApp(cfg, log)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Error new app: ", zap.Error(err))
 	}
 
 	if err := app.Run(); err != nil {
-		log.Fatal(err)
+		log.Fatal("Error start app: ", zap.Error(err))
 	}
 
-	log.Println("Application stopped")
+	log.Info("Application stopped")
 }

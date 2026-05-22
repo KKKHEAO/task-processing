@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -19,10 +18,10 @@ import (
 
 func main() {
 	cfg := config.NewConfig()
+	log, _ := logger.NewLogger(cfg)
 	if err := cfg.Validate(); err != nil {
 		log.Fatal("invalid config", zap.Error(err))
 	}
-	log, _ := logger.NewLogger(cfg)
 	psqlDB, err := postgres.NewSqlDB(cfg)
 	if err != nil {
 		log.Fatal("Ошибка при инициализации postgres", zap.Error(err))

@@ -2,24 +2,26 @@ package outbox
 
 import (
 	"context"
-	"log"
 	"time"
 
 	"github.com/KKKHEAO/task-processing/packages/config"
 	"github.com/KKKHEAO/task-processing/packages/domain"
+	"go.uber.org/zap"
 )
 
 type Worker struct {
 	repo      domain.TaskRepository
 	publisher *Publisher
 	config    *config.KafkaConfig
+	log       *zap.Logger
 }
 
-func NewWorker(repo domain.TaskRepository, pub *Publisher, cfg *config.KafkaConfig) *Worker {
+func NewWorker(repo domain.TaskRepository, pub *Publisher, cfg *config.KafkaConfig, log *zap.Logger) *Worker {
 	return &Worker{
 		repo:      repo,
 		publisher: pub,
 		config:    cfg,
+		log:       log,
 	}
 }
 
@@ -39,16 +41,16 @@ func (w *Worker) Start(ctx context.Context) {
 func (w *Worker) processBatch(ctx context.Context) {
 	events, err := w.repo.FetchOutboxBatch(ctx, w.config.BatchSize)
 	if err != nil {
-		log.Println("fetch error:", err)
+		w.log.Error("fetch error:", zap.Error(err))
 		return
 	}
 
-	log.Printf("Fetched outbox batch: %d events", len(events))
+	w.log.Info("Fetched outbox batch len: ", zap.Int("length", len(events)))
 
 	for _, e := range events {
 		targetTopic, err := w.publisher.PublishEvent(ctx, e)
 		if err != nil {
-			log.Printf("Failed to publish event %s to topic %s: %v", e.Id, targetTopic, err)
+			w.log.Error("Failed to publish event ", zap.Error(err))
 
 			// Обновляем retry информацию в БД
 			newRetryCount := e.RetryCount + 1
@@ -58,26 +60,44 @@ func (w *Worker) processBatch(ctx context.Context) {
 
 			// Если превышено максимальное количество попыток, помечаем как обработанное (отправлено в DLQ)
 			if newRetryCount >= w.config.MaxRetries {
-				log.Printf("Event %s reached max retries (%d), marking as processed", e.Id, w.config.MaxRetries)
+				w.log.Info("event reached max retries",
+					zap.String("event_id", e.Id.String()),
+					zap.Int("max_retries", w.config.MaxRetries),
+				)
 				if markErr := w.repo.MarkOutboxProcessed(ctx, e.Id); markErr != nil {
-					log.Printf("Failed to mark event %s as processed: %v", e.Id, markErr)
+					w.log.Error("failed to mark event as processed after max retries",
+						zap.String("event_id", e.Id.String()),
+						zap.Error(markErr),
+					)
 				}
 			} else {
 				// Обновляем retry информацию для следующей попытки
 				if updateErr := w.repo.UpdateOutboxRetry(ctx, e.Id, newRetryCount, &now, &nextRetryAt, &errorMsg); updateErr != nil {
-					log.Printf("Failed to update retry info for event %s: %v", e.Id, updateErr)
+					w.log.Error("failed to update retry info",
+						zap.String("event_id", e.Id.String()),
+						zap.Error(updateErr),
+					)
 				} else {
-					log.Printf("Updated retry info for event %s: retry %d, next retry at %v",
-						e.Id, newRetryCount, nextRetryAt.Format(time.RFC3339))
+					w.log.Info("updated retry info",
+						zap.String("event_id", e.Id.String()),
+						zap.Int("retry", newRetryCount),
+						zap.Time("next_retry_at", nextRetryAt),
+					)
 				}
 			}
 			continue
 		}
 
 		// Если публикация успешна, помечаем как обработанное
-		log.Printf("Successfully published event %s to topic %s", e.Id, targetTopic)
+		w.log.Info("successfully published event",
+			zap.String("event_id", e.Id.String()),
+			zap.String("topic", targetTopic),
+		)
 		if err := w.repo.MarkOutboxProcessed(ctx, e.Id); err != nil {
-			log.Printf("Failed to mark event %s as processed: %v", e.Id, err)
+			w.log.Error("failed to mark event as processed",
+				zap.String("event_id", e.Id.String()),
+				zap.Error(err),
+			)
 		}
 	}
 }
