@@ -1,4 +1,4 @@
-.PHONY: up down logs clean migrate kafka-create-topics infra-up infra-down infra-logs build build-api build-outboxer build-worker
+.PHONY: up down logs clean migrate kafka-create-topics infra-up infra-down infra-logs build build-api build-outboxer build-worker up-services down-services
 
 # === Сборка ===
 build-api:
@@ -12,12 +12,16 @@ build-worker:
 
 build: build-api build-outboxer build-worker
 
-# === Docker ===
-up:
-	docker-compose up -d --build
+up-services:
+	docker-compose up -d --build --force-recreate api outboxer worker
 
-down:
-	docker-compose down
+down-services:
+	docker-compose down api outboxer worker
+
+# === Docker ===
+up: infra-up up-services
+
+down: infra-down down-services
 
 logs:
 	docker-compose logs -f
@@ -37,6 +41,8 @@ kafka-create-topics:
 
 infra-up:
 	docker-compose up -d postgres migrate kafka kafka-ui
+	@sleep 3
+	bash kafka.sh
 
 infra-down:
 	docker-compose down postgres migrate kafka kafka-ui -v

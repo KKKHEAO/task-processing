@@ -56,7 +56,7 @@ func NewConfig() *Config {
 			PgDriver:           getEnvOrDefault("DB_DRIVER", "pgx"),
 		},
 		Kafka: KafkaConfig{
-			Brokers:   strings.Split(getEnvOrDefault("KAFKA_BROKERS", "kafka:9092"), ","),
+			Brokers:   strings.Split(getEnvOrDefault("KAFKA_BROKERS", "localhost:9092"), ","),
 			MainTopic: getEnvOrDefault("KAFKA_MAIN_TOPIC", "tasks.created"),
 			RetryTopics: []RetryTopicConfig{
 				{Name: "tasks.retry.1m", Delay: 1 * time.Minute, MaxRetry: 1},
