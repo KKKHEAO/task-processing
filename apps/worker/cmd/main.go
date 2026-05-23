@@ -33,7 +33,7 @@ func main() {
 	retryProducer := kafka.NewProducer(cfg.Kafka.Brokers[0], cfg.Kafka.RetryTopics[0].Name)
 	dlqProducer := kafka.NewProducer(cfg.Kafka.Brokers[0], cfg.Kafka.DLQTopic)
 
-	pool := worker.NewPool(5, retryProducer, dlqProducer)
+	pool := worker.NewPool(ctx, 5, retryProducer, dlqProducer, log)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)

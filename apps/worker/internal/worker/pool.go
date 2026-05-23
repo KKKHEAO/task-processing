@@ -3,9 +3,10 @@ package worker
 import (
 	"context"
 	"encoding/json"
-	"log"
+
 	"github.com/KKKHEAO/task-processing/packages/domain"
 	"github.com/KKKHEAO/task-processing/packages/kafka"
+	"go.uber.org/zap"
 )
 
 const LIMIT = 100
@@ -15,16 +16,20 @@ type Job struct {
 }
 
 type Pool struct {
+	ctx   context.Context
 	jobs  chan Job
 	retry *kafka.Producer
 	dlq   *kafka.Producer
+	log   *zap.Logger
 }
 
-func NewPool(maxWorkers int, retry *kafka.Producer, dlq *kafka.Producer) *Pool {
+func NewPool(ctx context.Context, maxWorkers int, retry *kafka.Producer, dlq *kafka.Producer, log *zap.Logger) *Pool {
 	p := &Pool{
+		ctx:   ctx,
 		jobs:  make(chan Job),
 		retry: retry,
 		dlq:   dlq,
+		log:   log,
 	}
 
 	for i := 0; i < maxWorkers; i++ {
@@ -36,25 +41,32 @@ func NewPool(maxWorkers int, retry *kafka.Producer, dlq *kafka.Producer) *Pool {
 
 func (p *Pool) Worker(id int) {
 	for job := range p.jobs {
-		log.Println("worker", id, "processing job")
+		p.log.Info("processing job", zap.Int("worker_id", id))
 
 		if err := Process(job); err == nil {
 			continue
 		}
 
 		var event domain.TaskCreatedEvent
-		json.Unmarshal(job.Payload, &event)
+		if err := json.Unmarshal(job.Payload, &event); err != nil {
+			p.log.Error("failed to unmarshal event", zap.Error(err))
+			continue
+		}
 
 		event.Retry++
 
-		payload, _ := json.Marshal(event)
-		if event.Retry < 3 {
-			log.Println("retry task", event.TaskId)
-			p.retry.Send(context.Background(), payload)
+		payload, err := json.Marshal(event)
+		if err != nil {
+			p.log.Error("failed to marshal event", zap.Error(err))
+			continue
+		}
 
+		if event.Retry < 3 {
+			p.log.Info("retry task", zap.String("task_id", event.TaskId))
+			p.retry.Send(p.ctx, payload)
 		} else {
-			log.Println("send to dlq", event.TaskId)
-			p.dlq.Send(context.Background(), payload)
+			p.log.Info("send to dlq", zap.String("task_id", event.TaskId))
+			p.dlq.Send(p.ctx, payload)
 		}
 	}
 }
