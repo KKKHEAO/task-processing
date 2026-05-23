@@ -19,7 +19,7 @@ func UnaryLogging(log *zap.Logger) grpc.UnaryServerInterceptor {
 				zap.Error(err),
 			)
 		} else {
-			log.Error("gRPC call",
+			log.Info("gRPC call",
 				zap.String("method", info.FullMethod),
 				zap.Duration("latency", time.Since(start)),
 			)
