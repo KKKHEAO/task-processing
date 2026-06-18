@@ -5,8 +5,9 @@ import (
 	"errors"
 	"log"
 	"math/rand"
-	"github.com/KKKHEAO/task-processing/packages/domain"
 	"time"
+
+	"github.com/KKKHEAO/task-processing/packages/domain"
 )
 
 func Process(job Job) error {
@@ -19,7 +20,7 @@ func Process(job Job) error {
 		return err
 	}
 
-	log.Println("processing task:", event.TaskId)
+	log.Println("processing task:", event.Id)
 
 	if rand.Intn(2) == 0 {
 		return errors.New("random error")
@@ -28,6 +29,6 @@ func Process(job Job) error {
 	// имитация работы
 	time.Sleep(20 * time.Second)
 
-	log.Println("task done:", event.TaskId)
+	log.Println("task done:", event.Id)
 	return nil
 }

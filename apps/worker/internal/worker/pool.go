@@ -62,10 +62,10 @@ func (p *Pool) Worker(id int) {
 		}
 
 		if event.Retry < 3 {
-			p.log.Info("retry task", zap.String("task_id", event.TaskId))
+			p.log.Info("retry task", zap.String("task_id", event.Id))
 			p.retry.Send(p.ctx, payload)
 		} else {
-			p.log.Info("send to dlq", zap.String("task_id", event.TaskId))
+			p.log.Info("send to dlq", zap.String("task_id", event.Id))
 			p.dlq.Send(p.ctx, payload)
 		}
 	}
