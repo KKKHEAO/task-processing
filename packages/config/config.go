@@ -10,11 +10,14 @@ import (
 
 type Config struct {
 	AppEnv   string
+	Server   ServerConfig
 	Postgres PostgresConfig
 	Kafka    KafkaConfig
 }
 
 type ServerConfig struct {
+	GRPCPort        string
+	ShutdownTimeout time.Duration
 }
 
 type PostgresConfig struct {
@@ -46,6 +49,10 @@ type RetryTopicConfig struct {
 func NewConfig() *Config {
 	return &Config{
 		AppEnv: getEnvOrDefault("ENVIRONMENT", "development"),
+		Server: ServerConfig{
+			GRPCPort:        getEnvOrDefault("GRPC_PORT", "50051"),
+			ShutdownTimeout: getEnvAsDuration("SHUTDOWN_TIMEOUT", 10*time.Second),
+		},
 		Postgres: PostgresConfig{
 			PostgresqlHost:     getEnvOrDefault("DB_HOST", "localhost"),
 			PostgresqlPort:     getEnvOrDefault("DB_PORT", "5432"),

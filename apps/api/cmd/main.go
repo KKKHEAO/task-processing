@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,18 +20,32 @@ import (
 
 func main() {
 	cfg := config.NewConfig()
-	log, _ := logger.NewLogger(cfg)
 	if err := cfg.Validate(); err != nil {
-		log.Fatal("invalid config", zap.Error(err))
+		panic(fmt.Sprintf("invalid config: %v", err))
 	}
+
+	log, err := logger.NewLogger(cfg)
+	if err != nil {
+		panic(fmt.Sprintf("cannot init logger: %v", err))
+	}
+	defer log.Sync()
+
+	if err := run(cfg, log); err != nil {
+		log.Error("server stopped with error", zap.Error(err))
+		os.Exit(1)
+	}
+	log.Info("Server stopped")
+}
+
+func run(cfg *config.Config, log *zap.Logger) error {
 	psqlDB, err := postgres.NewSqlDB(cfg)
 	if err != nil {
-		log.Fatal("Ошибка при инициализации postgres", zap.Error(err))
+		return fmt.Errorf("init postgres: %w", err)
 	}
 	defer psqlDB.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	taskRepo := repository.NewPostgresRepo(psqlDB)
 	taskService := service.NewTaskService(taskRepo)
@@ -37,30 +53,27 @@ func main() {
 
 	errChan := make(chan error, 1)
 	go func() {
-		errChan <- grpc.RunServer(ctx, taskHandler, "50051", log)
+		errChan <- grpc.RunServer(ctx, taskHandler, cfg.Server.GRPCPort, log)
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-
 	select {
-	case <-quit:
+	case <-ctx.Done():
 		log.Info("Shutting down server gracefully...")
-		cancel()
+		stop()
 
 		select {
 		case err := <-errChan:
-			if err != nil && err != context.Canceled {
-				log.Fatal("Server error during shutdown: ", zap.Error(err))
+			if err != nil && !errors.Is(err, context.Canceled) {
+				return fmt.Errorf("server error during shutdown: %w", err)
 			}
-		case <-time.After(10 * time.Second):
-			log.Fatal("shutdown timeout")
+		case <-time.After(cfg.Server.ShutdownTimeout):
+			return errors.New("shutdown timeout")
 		}
-		log.Info("Server stopped")
 	case err := <-errChan:
 		if err != nil {
-			log.Fatal("Server error: ", zap.Error(err))
+			return fmt.Errorf("server error: %w", err)
 		}
-		log.Info("Server stopped")
 	}
+
+	return nil
 }
