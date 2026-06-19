@@ -32,10 +32,6 @@ type App struct {
 
 // NewApp создает новое приложение
 func NewApp(cfg *config.Config, log *zap.Logger) (*App, error) {
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("config validation failed: %w", err)
-	}
-
 	// Форматируем retry topics для красивого вывода
 	retryTopicsStr := ""
 	for i, rt := range cfg.Kafka.RetryTopics {
@@ -136,7 +132,16 @@ func (a *App) Shutdown(timeout time.Duration) error {
 
 func main() {
 	cfg := config.NewConfig()
-	log, _ := logger.NewLogger(cfg)
+	if err := cfg.Validate(); err != nil {
+		panic(fmt.Sprintf("invalid config: %v", err))
+	}
+
+	log, err := logger.NewLogger(cfg)
+	if err != nil {
+		panic(fmt.Sprintf("cannot init logger: %v", err))
+	}
+	defer log.Sync()
+
 	app, err := NewApp(cfg, log)
 	if err != nil {
 		log.Fatal("Error new app: ", zap.Error(err))

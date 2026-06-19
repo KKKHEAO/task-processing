@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -16,7 +17,16 @@ import (
 
 func main() {
 	cfg := config.NewConfig()
-	log, _ := logger.NewLogger(cfg)
+	if err := cfg.Validate(); err != nil {
+		panic(fmt.Sprintf("invalid config: %v", err))
+	}
+
+	log, err := logger.NewLogger(cfg)
+	if err != nil {
+		panic(fmt.Sprintf("cannot init logger: %v", err))
+	}
+	defer log.Sync()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	topics := []string{cfg.Kafka.MainTopic}
@@ -46,10 +56,19 @@ func main() {
 	go func() {
 		for {
 			msg, err := consumer.Read(ctx)
-			msgCh <- struct {
+			if err != nil {
+				if ctx.Err() != nil {
+					return
+				}
+			}
+			select {
+			case msgCh <- struct {
 				msg sgkafka.Message
 				err error
-			}{msg, err}
+			}{msg, err}:
+			case <-ctx.Done():
+				return
+			}
 		}
 	}()
 
@@ -58,6 +77,8 @@ func main() {
 		case <-quit:
 			log.Info("Shutting down...")
 			cancel()
+			pool.Stop()
+			log.Info("Worker pool stopped")
 			return
 		case job := <-msgCh:
 			if job.err != nil {

@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"sync"
 
 	"github.com/KKKHEAO/task-processing/packages/domain"
 	"github.com/KKKHEAO/task-processing/packages/kafka"
@@ -21,6 +22,7 @@ type Pool struct {
 	retry *kafka.Producer
 	dlq   *kafka.Producer
 	log   *zap.Logger
+	wg    sync.WaitGroup
 }
 
 func NewPool(ctx context.Context, maxWorkers int, retry *kafka.Producer, dlq *kafka.Producer, log *zap.Logger) *Pool {
@@ -33,6 +35,7 @@ func NewPool(ctx context.Context, maxWorkers int, retry *kafka.Producer, dlq *ka
 	}
 
 	for i := 0; i < maxWorkers; i++ {
+		p.wg.Add(1)
 		go p.Worker(i)
 	}
 
@@ -40,6 +43,7 @@ func NewPool(ctx context.Context, maxWorkers int, retry *kafka.Producer, dlq *ka
 }
 
 func (p *Pool) Worker(id int) {
+	defer p.wg.Done()
 	for job := range p.jobs {
 		p.log.Info("processing job", zap.Int("worker_id", id))
 
@@ -73,4 +77,9 @@ func (p *Pool) Worker(id int) {
 
 func (p *Pool) Submit(job Job) {
 	p.jobs <- job
+}
+
+func (p *Pool) Stop() {
+	close(p.jobs)
+	p.wg.Wait()
 }
